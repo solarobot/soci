@@ -138,6 +138,46 @@ TEST_CASE("MS SQL wide string vector", "[odbc][mssql][vector][wstring]")
   }
 }
 
+TEST_CASE("MS SQL temporary table", "[odbc][mssql][table]")
+{
+  soci::session sql(backEnd, connectString);
+
+  // Create global temp table
+  sql << "CREATE TABLE ##soci_test_global_temp (oid uniqueidentifier PRIMARY KEY)";
+
+  std::vector<std::string> const str_in = {
+        "550e8400-e29b-41d4-a716-446655440000",
+        "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "c9bf9e57-1685-4c89-bafb-00f8147a1e88"};
+
+  sql << "insert into ##soci_test_global_temp(oid) values(:str)", use(str_in);
+
+  std::vector<std::string> str_out(4);
+
+  sql << "select oid from ##soci_test_global_temp", into(str_out);
+
+  CHECK(str_out.size() == str_in.size());
+  for (std::size_t i = 0; i != str_in.size(); ++i)
+  {
+    CHECK(str_out[i] == str_in[i]);
+  }
+
+  // Create local temp table
+  sql << "CREATE TABLE #soci_test_local_temp (oid uniqueidentifier PRIMARY KEY)";
+  sql << "insert into #soci_test_local_temp(oid) values(:str)", use(str_in);
+
+  std::vector<std::string> str_out2(4);
+
+  sql << "select oid from #soci_test_local_temp", into(str_out2);
+
+  CHECK(str_out2.size() == str_in.size());
+  for (std::size_t i = 0; i != str_in.size(); ++i)
+  {
+    CHECK(str_out2[i] == str_in[i]);
+  }
+}
+
 TEST_CASE("MS SQL table records count", "[odbc][mssql][count]")
 {
     soci::session sql(backEnd, connectString);
